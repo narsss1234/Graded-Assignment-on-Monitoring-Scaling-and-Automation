@@ -2,8 +2,7 @@ import boto3
 
 ec2_client = boto3.client('ec2')
 
-USERDATA='''
-#!/bin/bash
+USERDATA='''#!/bin/bash
 
 sudo apt update
 

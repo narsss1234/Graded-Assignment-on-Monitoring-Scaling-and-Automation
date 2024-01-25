@@ -1,5 +1,4 @@
 import boto3
-import json
 
 REGION='ap-south-1'
 
@@ -52,6 +51,8 @@ DEVICE_NAME = '/dev/xvda'
 SECURITY_GROUPS_IDS = ['sg-0d9a2cb2f73468506']
 ROLE_PROFILE = 'ec2-service-role-admin'
 
+InstanceIds=[]
+
 def create_ec2_instance():
     try:
         response = ec2_client.run_instances(
@@ -70,7 +71,7 @@ def create_ec2_instance():
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             instance_id = response['Instances'][0]['InstanceId']
             ec2_client.get_waiter('instance_running').wait(
-                InstanceIds=[instance_id]
+                InstanceIds.append(instance_id)
             )
             print('Success! instance:', instance_id, 'is created and running')
         else:
