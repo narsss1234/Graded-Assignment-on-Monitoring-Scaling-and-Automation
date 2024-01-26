@@ -1,9 +1,11 @@
-# import boto3 Amazon SDK
+# import boto3 Amazon SDK and time
 import boto3
 import time
 
 # defining variable for region of choice
 REGION='ap-south-1'
+
+# --> Step 1: Web Application Deployment 
 
 # Create an S3 client
 s3_client = boto3.client('s3')
@@ -126,6 +128,8 @@ create_ec2_instance()
 
 time.sleep(120)
 
+# --> Step 2: Load Balancing with ELB
+
 # Create an elb client
 elb_client = boto3.client('elbv2', region_name=REGION)
 
@@ -135,11 +139,15 @@ alb_name = "assignment-alb"
 subnets = ['subnet-05a15ce69d2d9f69d','subnet-076051ff9276a558d','subnet-0564d17c714b6a55a']
 security_groups = ['sg-09e0c5dd41f4bd5b9']
 
-# create alb
+# defining empty list to store the target arn's
+target_group_arns = []
+
+# defining function which will create load balancer, target group, register targets and add a listener to the ALB
 
 def create_alb_and_attach_ec2():
     # create alb
 
+    # using create_load_balancer to create ALB with some tags
     response_alb = elb_client.create_load_balancer(
         Name = alb_name,
         Subnets = subnets,
@@ -150,6 +158,8 @@ def create_alb_and_attach_ec2():
 
     # Extracting the ARN of the created ALB
 
+    # extracting the load balancer ARN
+
     alb_arn = response_alb['LoadBalancers'][0]['LoadBalancerArn']
 
     # defining target_group attributes
@@ -159,6 +169,7 @@ def create_alb_and_attach_ec2():
     health_check_path = '/'
     protocol = 'HTTP'
 
+    # create_target_group to create the target group
     response_target_grp = elb_client.create_target_group(
         Name=target_group_name,
         Protocol=protocol,
@@ -174,7 +185,11 @@ def create_alb_and_attach_ec2():
         Matcher={'HttpCode': '200'}
     )
 
+    # extracting the target group ARN's 
     target_group_arn = response_target_grp['TargetGroups'][0]['TargetGroupArn']
+
+    # append the target group arn to an empty list to use it in future
+    target_group_arns.append(target_group_arn)
 
     # Register ec2 instance with the target
 
@@ -200,3 +215,76 @@ def create_alb_and_attach_ec2():
     return f"ALB {alb_name} and Target Group {target_group_name} created successfully."
 
 print(create_alb_and_attach_ec2())
+
+# --> Step 3: Auto Scaling Group (ASG) Configuration
+
+autoscaling_grp_arns = []
+
+# Create an autoscaling client
+
+autoscaling_client = boto3.client('autoscaling',region_name=REGION)
+
+cloudwatch_client = boto3.client('cloudwatch', region_name=REGION)
+
+def create_autoscaling():
+    autoscaling_client = boto3.client('autoscaling',region_name=REGION)
+
+    autoscaling_client.create_launch_configuration(
+        LaunchConfigurationName='assignment_lauch_config',
+        InstanceId=InstanceIds[0],
+        KeyName='ec2',
+        SecurityGroups=SECURITY_GROUPS_IDS,
+    )
+
+    autoscaling_client.create_auto_scaling_group(
+        AutoScalingGroupName='assigment_autoscaling_grp',
+        # LaunchConfigurationName='assignment_lauch_config',
+        MinSize=1,
+        MaxSize=2,
+        DesiredCapacity=2,
+        InstanceId=InstanceIds[0],
+        TargetGroupARNs=target_group_arns
+    )
+
+    time.sleep(120)
+
+    response_describe_auto_scaling = autoscaling_client.describe_auto_scaling_groups(
+        AutoScalingGroupNames=[
+            'assigment_autoscaling_grp',
+        ]
+    )
+
+    asg_arn = response_describe_auto_scaling['AutoScalingGroups'][0]['AutoScalingGroupARN']
+
+    autoscaling_grp_arns.append(asg_arn)
+
+    print(autoscaling_grp_arns)
+
+    # Scale out policy
+
+    autoscaling_client.put_scaling_policy(
+        AutoScalingGroupName='assigment_autoscaling_grp',
+        PolicyName='ScaleOutPolicy',
+        PolicyType='SimpleScaling',
+        AdjustmentType='ChangeInCapacity',
+        ScalingAdjustment=1,
+        Cooldown=300,  # 5 minutes
+    )
+
+    # Scale in policy
+
+    autoscaling_client.put_scaling_policy(
+        AutoScalingGroupName='assigment_autoscaling_grp',
+        PolicyName='ScaleInPolicy',
+        PolicyType='SimpleScaling',
+        AdjustmentType='ChangeInCapacity',
+        ScalingAdjustment=-1,
+        Cooldown=300,  # 5 minutes
+    )
+
+    print("Auto Scaling Group, Launch Configuration, and Scaling Policies created successfully.")
+
+    return "autoscaling is created"
+
+print(create_autoscaling())
+
