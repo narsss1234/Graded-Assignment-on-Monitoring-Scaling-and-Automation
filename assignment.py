@@ -321,7 +321,7 @@ def upload_to_s3_bucket(bucket_name):
             zip_file.write('lambda.py')
 
         s3_client.upload_file('lambda.zip',bucket_name, 'lambda.zip')
-        return f"File ${bucket_name} has been uploaded successfully."
+        return f"File {bucket_name} has been uploaded successfully."
     # if eny exception, return the exception as a string
     except Exception as e:
         return f"An error occurred: {str(e)}"
@@ -354,3 +354,4 @@ def create_lambda_function():
     return "lambda fucntion created."
 
 create_lambda_function()
+

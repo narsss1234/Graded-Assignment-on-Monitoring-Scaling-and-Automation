@@ -13,9 +13,15 @@ def lambda_handler(event, context):
     sns_client = boto3.client('sns')
     asg_client = boto3.client('autoscaling')
 
+    alb_describe = alb_client.describe_load_balancers(Names=[alb_name])
+
+    alb_arns = alb_describe['LoadBalancers'][0]['LoadBalancerArn']
+
     # Get the target group attached to the ALB
-    target_groups = alb_client.describe_target_groups(Names=[alb_name])
+    target_groups = alb_client.describe_target_groups(LoadBalancerArn=alb_arns)
     target_group_arn = target_groups['TargetGroups'][0]['TargetGroupArn']
+
+    print(target_group_arn)
 
     # Get the instances registered with the target group
     instances = alb_client.describe_target_health(TargetGroupArn=target_group_arn)
