@@ -286,22 +286,6 @@ print(create_autoscaling())
 
 # --> creating S3 bucket and uploading the lambda code
 
-def create_s3_bucket(bucket_name):
-
-    # try block to attempt creating a bucket
-    try:
-        s3_client.create_bucket(Bucket=bucket_name,
-                         CreateBucketConfiguration={
-                            'LocationConstraint': REGION,
-                            }
-                        )
-        # return bucket created text if the create_bucket was successful
-        return f"S3 bucket '{bucket_name}' created successfully."
-    
-    # If any exception, like bucket name already exists or if bucket is already owned by us
-    except Exception as e:
-        return f"An error occurred: {str(e)}"
-
 # defning bucket name in a vatiable
 bucket_name = 'assignment-bucket-for-lambda-function-storing-712'
 
