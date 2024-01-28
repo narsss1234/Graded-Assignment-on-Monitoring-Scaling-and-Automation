@@ -5,7 +5,7 @@ import time
 def lambda_handler(event, context):
     # defining the alb, asg and the sns arn
     alb_name = 'assignment-alb'
-    sns_topic_arn = ''
+    sns_topic_arn = 'arn:aws:sns:ap-south-1:367065853931:assignment_sns'
     asg_name = 'assigment_autoscaling_grp'
 
     alb_client = boto3.client('elbv2')

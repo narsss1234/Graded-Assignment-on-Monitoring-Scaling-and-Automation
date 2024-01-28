@@ -334,7 +334,7 @@ lambda_client = boto3.client('lambda')
 response_lambda = lambda_client.create_function(
     FunctionName = 'Lambda-Health-Checks',
     Runtime = 'python3.9',
-    Role = 'Lambda_for_assignment-role-difp8zc1',
+    Role = 'arn:aws:iam::367065853931:role/service-role/Lambda_for_assignment-role-difp8zc1',
     Timeout = 120,
     Code={
         'S3Bucket': 'assignment-bucket-for-lambda-function-storing-712',
