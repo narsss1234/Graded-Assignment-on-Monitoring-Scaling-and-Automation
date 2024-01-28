@@ -374,9 +374,41 @@ def create_lambda_function():
                 'Arn': function_arn,
             }
         ]
-
+    )
 
     return "lambda fucntion created with cloud watch event."
 
 create_lambda_function()
 
+# --> Step 5: S3 Logging & Monitoring
+
+alb_arn = []
+
+response_describe_arn = elb_client.describe_load_balancers(
+    Names=alb_name,
+)
+
+alb_arn.append(response_describe_arn['LoadBalancers'][0]['LoadBalancerArn'])
+
+# defning bucket name in a vatiable
+bucket_name = 'assignment_bucket_s3_logs_from_alb_712'
+
+# calling the create bucket function
+result_message = create_s3_bucket(bucket_name)
+
+# printing the return value for the create bucket function
+print(result_message)
+
+response = elb_client.modify_load_balancer_attributes(
+        LoadBalancerArn=alb_arn,
+        Attributes=[
+            {
+                'Key': 'access_logs.s3.enabled',
+                'Value': 'true'
+            },
+            {
+                'Key': 'access_logs.s3.bucket',
+                'Value': 'assignment_bucket_s3_logs_from_alb_712'
+            }
+        ]
+    )
