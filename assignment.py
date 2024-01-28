@@ -356,6 +356,7 @@ def create_lambda_function():
         Targets=[
             {
                 'Arn': function_arn,
+                'Id':'1'
             }
         ]
     )
