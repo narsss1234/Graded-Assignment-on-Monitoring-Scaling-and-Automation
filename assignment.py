@@ -315,7 +315,7 @@ def upload_to_s3_bucket(bucket_name):
     # try block to attempt upload file a bucket
     try:
         s3_client.upload_file('lambda.py',bucket_name, 'lambda.py')
-        return f"File index.html has been uploaded successfully."
+        return f"File ${bucket_name} has been uploaded successfully."
     # if eny exception, return the exception as a string
     except Exception as e:
         return f"An error occurred: {str(e)}"
@@ -338,6 +338,6 @@ response_lambda = lambda_client.create_function(
     Timeout = 120,
     Code={
         'S3Bucket': 'assignment-bucket-for-lambda-function-storing-712',
-        'S3Key': 'lambda.py'
     },
+    Handler='test',
 )
