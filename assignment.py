@@ -335,9 +335,15 @@ print(result_message_upload_to_s3)
 
 # --> Step 4:Lambda-based Health Checks & Management
 
-def create_lambda_function():
+lambda_client = boto3.client('lambda',region_name=REGION)
 
-    lambda_client = boto3.client('lambda',region_name=REGION)
+schedule_expression = 'cron(0 * * * ? *)'
+
+cloudwatch_events_client = boto3.client('events', region_name=REGION)
+
+Event_arn = []
+
+def create_lambda_function():
 
     response_lambda = lambda_client.create_function(
         FunctionName = 'Lambda-Health-Checks',
@@ -351,7 +357,26 @@ def create_lambda_function():
         Handler='test',
     )
 
-    return "lambda fucntion created."
+    function_arn = response_lambda['FunctionArn']
+
+    response_cloudwatch_events_client = cloudwatch_events_client.put_rule(
+        Name='assignment_lambda_couldwatch_event',
+        ScheduleExpression=schedule_expression,
+        State='ENABLED'
+    )
+
+    Event_arn.append(response_cloudwatch_events_client['RuleArn'])
+
+    cloudwatch_events_client.put_targets(
+        Rule='assignment_lambda_couldwatch_event',
+        Targets=[
+            {
+                'Arn': function_arn,
+            }
+        ]
+
+
+    return "lambda fucntion created with cloud watch event."
 
 create_lambda_function()
 
