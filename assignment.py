@@ -71,7 +71,7 @@ AMI_IMAGE_ID = 'ami-03f4878755434977f'
 INSTANCE_TYPE = 't2.micro'
 DISK_SIZE_GB = 8
 DEVICE_NAME = '/dev/xvda'
-SECURITY_GROUPS_IDS = ['sg-0d9a2cb2f73468506']
+security_groups = ['sg-09e0c5dd41f4bd5b9']
 # ec2 role, so that s3 bucket can be access from the instance that will be created
 ROLE_PROFILE = 'ec2-service-role-admin'
 
@@ -86,7 +86,7 @@ def create_ec2_instance():
         response = ec2_client.run_instances(
             ImageId=AMI_IMAGE_ID,
             InstanceType=INSTANCE_TYPE,
-            SecurityGroupIds=SECURITY_GROUPS_IDS,
+            SecurityGroupIds=security_groups,
             UserData=USERDATA,
             IamInstanceProfile={
                 'Name':ROLE_PROFILE
@@ -126,7 +126,7 @@ def create_ec2_instance():
 # calling the create ec2 function
 create_ec2_instance()
 
-time.sleep(120)
+time.sleep(100)
 
 # --> Step 2: Load Balancing with ELB
 
@@ -137,7 +137,6 @@ elb_client = boto3.client('elbv2', region_name=REGION)
 
 alb_name = "assignment-alb"
 subnets = ['subnet-05a15ce69d2d9f69d','subnet-076051ff9276a558d','subnet-0564d17c714b6a55a']
-security_groups = ['sg-09e0c5dd41f4bd5b9']
 
 # defining empty list to store the target arn's
 target_group_arns = []
@@ -145,22 +144,6 @@ target_group_arns = []
 # defining function which will create load balancer, target group, register targets and add a listener to the ALB
 
 def create_alb_and_attach_ec2():
-    # create alb
-
-    # using create_load_balancer to create ALB with some tags
-    response_alb = elb_client.create_load_balancer(
-        Name = alb_name,
-        Subnets = subnets,
-        SecurityGroups=security_groups,
-        Scheme='internet-facing',
-        Tags=[{'Key':'Name','Value':alb_name}]
-    )
-
-    # Extracting the ARN of the created ALB
-
-    # extracting the load balancer ARN
-
-    alb_arn = response_alb['LoadBalancers'][0]['LoadBalancerArn']
 
     # defining target_group attributes
 
@@ -190,6 +173,25 @@ def create_alb_and_attach_ec2():
 
     # append the target group arn to an empty list to use it in future
     target_group_arns.append(target_group_arn)
+
+    print("Target groups created are: ", target_group_arns)
+
+    # create alb
+
+    # using create_load_balancer to create ALB with some tags
+    response_alb = elb_client.create_load_balancer(
+        Name = alb_name,
+        Subnets = subnets,
+        SecurityGroups=security_groups,
+        Scheme='internet-facing',
+        Tags=[{'Key':'Name','Value':alb_name}]
+    )
+
+    # Extracting the ARN of the created ALB
+
+    # extracting the load balancer ARN
+
+    alb_arn = response_alb['LoadBalancers'][0]['LoadBalancerArn']
 
     # Register ec2 instance with the target
 
@@ -229,19 +231,12 @@ cloudwatch_client = boto3.client('cloudwatch', region_name=REGION)
 def create_autoscaling():
     autoscaling_client = boto3.client('autoscaling',region_name=REGION)
 
-    autoscaling_client.create_launch_configuration(
-        LaunchConfigurationName='assignment_lauch_config',
-        InstanceId=InstanceIds[0],
-        KeyName='ec2',
-        SecurityGroups=SECURITY_GROUPS_IDS,
-    )
-
     autoscaling_client.create_auto_scaling_group(
         AutoScalingGroupName='assigment_autoscaling_grp',
         # LaunchConfigurationName='assignment_lauch_config',
         MinSize=1,
         MaxSize=2,
-        DesiredCapacity=2,
+        DesiredCapacity=1,
         InstanceId=InstanceIds[0],
         TargetGroupARNs=target_group_arns
     )
@@ -282,9 +277,67 @@ def create_autoscaling():
         Cooldown=300,  # 5 minutes
     )
 
-    print("Auto Scaling Group, Launch Configuration, and Scaling Policies created successfully.")
+    print("Auto Scaling Group and Scaling Policies created successfully.")
 
     return "autoscaling is created"
 
 print(create_autoscaling())
 
+# --> creating S# bucket and uploading the lambda code
+
+def create_s3_bucket(bucket_name):
+
+    # try block to attempt creating a bucket
+    try:
+        s3_client.create_bucket(Bucket=bucket_name,
+                         CreateBucketConfiguration={
+                            'LocationConstraint': REGION,
+                            }
+                        )
+        # return bucket created text if the create_bucket was successful
+        return f"S3 bucket '{bucket_name}' created successfully."
+    
+    # If any exception, like bucket name already exists or if bucket is already owned by us
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
+
+# defning bucket name in a vatiable
+bucket_name = 'assignment-bucket-for-lambda-function-storing-712'
+
+# calling the create bucket function
+result_message = create_s3_bucket(bucket_name)
+
+# printing the return value for the create bucket function
+print(result_message)
+
+# defining function to upload to s3 bucket with handling errors gracefully
+def upload_to_s3_bucket(bucket_name):
+    # try block to attempt upload file a bucket
+    try:
+        s3_client.upload_file('lambda.py',bucket_name, 'lambda.py')
+        return f"File index.html has been uploaded successfully."
+    # if eny exception, return the exception as a string
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
+
+# sotring the response from upload to s3 function
+result_message_upload_to_s3 = upload_to_s3_bucket(bucket_name)
+
+# printing the response from upload to s3 function
+print(result_message_upload_to_s3)
+
+
+# --> Step 4:Lambda-based Health Checks & Management
+
+lambda_client = boto3.client('lambda')
+
+response_lambda = lambda_client.create_function(
+    FunctionName = 'Lambda-Health-Checks',
+    Runtime = 'python3.9',
+    Role = 'Lambda_for_assignment-role-difp8zc1',
+    Timeout = 120,
+    Code={
+        'S3Bucket': 'assignment-bucket-for-lambda-function-storing-712',
+        'S3Key': 'lambda.py'
+    },
+)
