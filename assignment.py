@@ -1,6 +1,7 @@
-# import boto3 Amazon SDK and time
+# import boto3 Amazon SDK ,time ,zipfile
 import boto3
 import time
+import zipfile
 
 # defining variable for region of choice
 REGION='ap-south-1'
@@ -283,7 +284,7 @@ def create_autoscaling():
 
 print(create_autoscaling())
 
-# --> creating S# bucket and uploading the lambda code
+# --> creating S3 bucket and uploading the lambda code
 
 def create_s3_bucket(bucket_name):
 
@@ -314,7 +315,12 @@ print(result_message)
 def upload_to_s3_bucket(bucket_name):
     # try block to attempt upload file a bucket
     try:
-        s3_client.upload_file('lambda.py',bucket_name, 'lambda.py')
+
+        with zipfile.ZipFile('lambda.zip', 'w') as zip_file:
+        # Add the file to the zip archive
+            zip_file.write('lambda.py')
+
+        s3_client.upload_file('lambda.zip',bucket_name, 'lambda.zip')
         return f"File ${bucket_name} has been uploaded successfully."
     # if eny exception, return the exception as a string
     except Exception as e:
@@ -329,15 +335,22 @@ print(result_message_upload_to_s3)
 
 # --> Step 4:Lambda-based Health Checks & Management
 
-lambda_client = boto3.client('lambda')
+def create_lambda_function():
 
-response_lambda = lambda_client.create_function(
-    FunctionName = 'Lambda-Health-Checks',
-    Runtime = 'python3.9',
-    Role = 'arn:aws:iam::367065853931:role/service-role/Lambda_for_assignment-role-difp8zc1',
-    Timeout = 120,
-    Code={
-        'S3Bucket': 'assignment-bucket-for-lambda-function-storing-712',
-    },
-    Handler='test',
-)
+    lambda_client = boto3.client('lambda',region_name=REGION)
+
+    response_lambda = lambda_client.create_function(
+        FunctionName = 'Lambda-Health-Checks',
+        Runtime = 'python3.9',
+        Role = 'arn:aws:iam::367065853931:role/service-role/Lambda_for_assignment-role-difp8zc1',
+        Timeout = 120,
+        Code={
+            'S3Bucket': 'assignment-bucket-for-lambda-function-storing-712',
+            'S3Key': 'lambda.zip',
+        },
+        Handler='test',
+    )
+
+    return "lambda fucntion created."
+
+create_lambda_function()
