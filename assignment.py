@@ -1,7 +1,8 @@
-# import boto3 Amazon SDK ,time ,zipfile
+# import boto3 Amazon SDK ,time ,zipfile, json
 import boto3
 import time
 import zipfile
+import json
 
 # defining variable for region of choice
 REGION='ap-south-1'
@@ -397,4 +398,86 @@ response = elb_client.modify_load_balancer_attributes(
             }
         ]
     )
+
+# --> Create a Lambda function that triggers when a new log is added to the S3 bucket. This function can analyze the log for suspicious activities (like potential DDoS attacks) or just high traffic. 
+
+# defning bucket name in a vatiable
+bucket_name = 'assignment-bucket-for-lambda-function-for-checking-logs-DDoS'
+
+# calling the create bucket function
+result_message = create_s3_bucket(bucket_name)
+
+# printing the return value for the create bucket function
+print(result_message)
+
+# defining function to upload to s3 bucket with handling errors gracefully
+def upload_to_s3_bucket(bucket_name):
+    # try block to attempt upload file a bucket
+    try:
+
+        with zipfile.ZipFile('lambda_DDos.zip', 'w') as zip_file:
+        # Add the file to the zip archive
+            zip_file.write('lambda_ddos.py')
+
+        s3_client.upload_file('lambda_DDos.zip',bucket_name, 'lambda_DDos.zip')
+        return f"File {bucket_name} has been uploaded successfully."
+    # if eny exception, return the exception as a string
+    except Exception as e:
+        return f"An error occurred: {str(e)}"
+
+# sotring the response from upload to s3 function
+result_message_upload_to_s3 = upload_to_s3_bucket(bucket_name)
+
+# printing the response from upload to s3 function
+print(result_message_upload_to_s3)
+
+# - If any predefined criteria are met during the log analysis, the Lambda function sends a  notification via SNS. 
+
+cloudwatch_events_client = boto3.client('events', region_name=REGION)
+
+Event_arn = []
+
+def create_lambda_function():
+
+    response_lambda = lambda_client.create_function(
+        FunctionName = 'Lambda-DDoS',
+        Runtime = 'python3.9',
+        Role = 'arn:aws:iam::367065853931:role/service-role/Lambda_for_assignment-role-difp8zc1',
+        Timeout = 120,
+        Code={
+            'S3Bucket': 'assignment-bucket-for-lambda-function-for-checking-logs-DDoS',
+            'S3Key': 'lambda_DDos.zip',
+        },
+        Handler='test',
+    )
+
+    function_arn = response_lambda['FunctionArn']
+
+    response_cloudwatch_events_client = cloudwatch_events_client.put_rule(
+        Name='assignment_lambda_couldwatch_event_DDoS',
+        EventPattern=json.dumps({
+            "source": ["aws.s3"],
+            "detail": {
+                "eventName": ["PutObject"]
+            },
+            "resources": [f"arn:aws:s3:::{bucket_name}"],
+        }),
+        State='ENABLED'
+    )
+
+    Event_arn.append(response_cloudwatch_events_client['RuleArn'])
+
+    cloudwatch_events_client.put_targets(
+        Rule='assignment_lambda_couldwatch_event_DDoS',
+        Targets=[
+            {
+                'Arn': function_arn,
+                'Id':'1'
+            }
+        ]
+    )
+
+    return "lambda fucntion for DDoS created with cloud watch event."
+
+create_lambda_function()
 
