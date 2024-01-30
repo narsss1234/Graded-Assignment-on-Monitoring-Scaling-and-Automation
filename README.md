@@ -105,6 +105,38 @@ Storing the arn for the autoscaling that was created.
 
  --> Solution
 ```
+Created a lambda code and stored it locally in 'lambda.py'
+
+- The lambda code - uses boto3, to call elbv2, ec2, sns, and autosacling group
+
+- It will check the health status of ec2 created by alb and this is retrieved from the target groups attached
+
+- If any instance status is other than "healthy"
+
+- It will call ec2 client to create snapshot of the ec2
+
+- and then it will detach the instance from the autoscaling group, so that autoscaling group will cerate a new instance and attach it automactically.
+
+- and then terminate the instance that was detached.
+
+ --> once this is compeleted an SNS message will be pushed, with instanceId that got terminated to notify the administrators.
+```
+```
+once the lambda is tested locally 
+
+Created a new S3 bucket, to zip the lambda file and store it in the bucket
+
+Once this is done
+
+Created a lambda client
+
+and created a lambda function, to fetch the code from s3, with a timeout 120 seconds, to avoid any additional costs for lambda execution for now, this can be increased based on the number of ec2 that will need to be checked
+
+Created a cloudwatch 'events' client
+
+Created a event with scheduled expression to run in a time interval
+
+and later the target for the event to the lambda function ARN
 ```
 
 5. S3 Logging & Monitoring: 
