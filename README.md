@@ -59,6 +59,7 @@ using elbv2 client, created a target group, which is set to check as port 80, as
 Using elbv2, created an ALB(application load balancer)
 
 --> once alb is created, storing the alb arns in a list, to use it later
+    with healthcheck at '/'
 
 Using elbv2, register the instanceIds to the target group that was created.
 
@@ -72,6 +73,22 @@ Using elbv2, created a listener at port 80, type forward, and added to the exist
 
  - Configure scaling policies to scale in/out based on metrics like CPU utilization or network traffic. 
 
+ --> Solution
+'''
+Created autoscaling client
+
+- Created an autoscaling with the created ec2 instance as launch template/configuration.
+-desired capacity - 1, min - 1, max - 2
+
+Sleep for 2 mins, so that the autoscaling can be configured and the new instances are generated for the desired quantity.
+
+Storing the arn for the autoscaling that was created.
+
+-- created a Scaling out policy with scaling adjustment as 1
+
+-- created a Scaling in policy with scaling adustment as -1
+'''
+
 4. Lambda-based Health Checks & Management: 
 
  - Develop a Lambda function to periodically check the health of the web application  (through the ALB). 
@@ -81,6 +98,11 @@ Using elbv2, created a listener at port 80, type forward, and added to the exist
  - Capture a snapshot of the failing instance for debugging purposes.
 
  - Terminate the problematic instance, allowing the ASG to replace it.  - Send a notification through SNS to the administrators. 
+
+ --> Solution
+ '''
+
+ '''
 
 5. S3 Logging & Monitoring: 
 
