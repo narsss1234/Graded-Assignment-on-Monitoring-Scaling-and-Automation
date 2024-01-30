@@ -356,7 +356,7 @@ def create_lambda_function():
         Rule='assignment_lambda_couldwatch_event',
         Targets=[
             {
-                'Arn': function_arn,
+                'Arn': 'arn:aws:lambda:ap-south-1:367065853931:function:Lambda-Health-Checks',
                 'Id':'1'
             }
         ]
@@ -364,29 +364,30 @@ def create_lambda_function():
 
     return "lambda fucntion created with cloud watch event."
 
-create_lambda_function()
+print(create_lambda_function())
+
 
 # --> Step 5: S3 Logging & Monitoring
 
 alb_arn = []
 
 response_describe_arn = elb_client.describe_load_balancers(
-    Names=alb_name,
+    Names=[alb_name],
 )
 
 alb_arn.append(response_describe_arn['LoadBalancers'][0]['LoadBalancerArn'])
 
 # defning bucket name in a vatiable
-bucket_name = 'assignment_bucket_s3_logs_from_alb_712'
+bucket_name_ALB = 'assignment-bucket-s3-logs-from-alb-1234'
 
 # calling the create bucket function
-result_message = create_s3_bucket(bucket_name)
+result_message = create_s3_bucket(bucket_name_ALB)
 
 # printing the return value for the create bucket function
 print(result_message)
 
 response = elb_client.modify_load_balancer_attributes(
-        LoadBalancerArn=alb_arn,
+        LoadBalancerArn=alb_arn[0],
         Attributes=[
             {
                 'Key': 'access_logs.s3.enabled',
@@ -394,24 +395,26 @@ response = elb_client.modify_load_balancer_attributes(
             },
             {
                 'Key': 'access_logs.s3.bucket',
-                'Value': 'assignment_bucket_s3_logs_from_alb_712'
+                'Value': bucket_name_ALB
             }
         ]
     )
 
+print("s3 bucket created to store logs and it has been attached to alb with modify load balancer command.")
+
 # --> Create a Lambda function that triggers when a new log is added to the S3 bucket. This function can analyze the log for suspicious activities (like potential DDoS attacks) or just high traffic. 
 
 # defning bucket name in a vatiable
-bucket_name = 'assignment-bucket-for-lambda-function-for-checking-logs-DDoS'
+bucket_name_lambda_ddos = 'assignment-bucket-for-lambda-function-for-checking-logs-ddoS'
 
 # calling the create bucket function
-result_message = create_s3_bucket(bucket_name)
+result_message = create_s3_bucket(bucket_name_lambda_ddos)
 
 # printing the return value for the create bucket function
 print(result_message)
 
 # defining function to upload to s3 bucket with handling errors gracefully
-def upload_to_s3_bucket(bucket_name):
+def upload_to_s3_bucket(bucket_name_lambda_ddos):
     # try block to attempt upload file a bucket
     try:
 
@@ -419,14 +422,14 @@ def upload_to_s3_bucket(bucket_name):
         # Add the file to the zip archive
             zip_file.write('lambda_ddos.py')
 
-        s3_client.upload_file('lambda_DDos.zip',bucket_name, 'lambda_DDos.zip')
-        return f"File {bucket_name} has been uploaded successfully."
+        s3_client.upload_file('lambda_DDos.zip',bucket_name_lambda_ddos, 'lambda_DDos.zip')
+        return f"File {bucket_name_lambda_ddos} has been uploaded successfully."
     # if eny exception, return the exception as a string
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
 # sotring the response from upload to s3 function
-result_message_upload_to_s3 = upload_to_s3_bucket(bucket_name)
+result_message_upload_to_s3 = upload_to_s3_bucket(bucket_name_lambda_ddos)
 
 # printing the response from upload to s3 function
 print(result_message_upload_to_s3)
@@ -445,7 +448,7 @@ def create_lambda_function():
         Role = 'arn:aws:iam::367065853931:role/service-role/Lambda_for_assignment-role-difp8zc1',
         Timeout = 120,
         Code={
-            'S3Bucket': 'assignment-bucket-for-lambda-function-for-checking-logs-DDoS',
+            'S3Bucket': bucket_name_lambda_ddos,
             'S3Key': 'lambda_DDos.zip',
         },
         Handler='test',
@@ -460,7 +463,7 @@ def create_lambda_function():
             "detail": {
                 "eventName": ["PutObject"]
             },
-            "resources": [f"arn:aws:s3:::{bucket_name}"],
+            "resources": [f"arn:aws:s3:::{bucket_name_lambda_ddos}"],
         }),
         State='ENABLED'
     )
@@ -479,5 +482,5 @@ def create_lambda_function():
 
     return "lambda fucntion for DDoS created with cloud watch event."
 
-create_lambda_function()
+print(create_lambda_function())
 

@@ -147,6 +147,14 @@ and later the target for the event to the lambda function ARN
 
  - If any predefined criteria are met during the log analysis, the Lambda function sends a  notification via SNS. 
 
+ ```
+ Used elbv2 describe load balancer to get the arn for the alb and stored it in  a list
+
+ Also created a new s3 bucket to store the logs from ALB
+
+ 
+ ```
+
 6. SNS Notifications: 
 
  - Set up different SNS topics for different alerts (e.g., health issues, scaling events, high traffic). 
