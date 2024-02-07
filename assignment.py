@@ -484,3 +484,90 @@ def create_lambda_function():
 
 print(create_lambda_function())
 
+
+# Step 6: SNS Notifications: 
+
+sns_client = boto3.client('sns')
+cloudwatch_client = boto3.client('cloudwatch')
+lambda_client = boto3.client('lambda')
+
+# Creating SNS topics for different alerts
+topics = {
+    "health_issues": "HealthIssuesTopic",
+    "scaling_events": "ScalingEventsTopic",
+    "high_traffic": "HighTrafficTopic"
+}
+
+topic_arns = {}
+
+for topic_name, display_name in topics.items():
+    response = sns_client.create_topic(Name=display_name)
+    topic_arn = response['TopicArn']
+    print(f"Created {topic_name} topic with ARN: {topic_arn}")
+    topic_arns[topic_name] = topic_arn
+
+# Creating CloudWatch alarms for load balancer metrics
+load_balancer_name = 'assignment-alb'
+
+# Health issues alarm
+health_issues_alarm_name = 'HealthIssuesAlarm'
+cloudwatch_client.put_metric_alarm(
+    AlarmName=health_issues_alarm_name,
+    AlarmActions=[topic_arns['health_issues']],
+    MetricName='HealthyHostCount',
+    Namespace='AWS/ELB',
+    Statistic='Average',
+    ComparisonOperator='LessThanThreshold',
+    Threshold=1,  # Change threshold according to your requirement
+    Period=300,  # 5 minutes
+    EvaluationPeriods=1,
+    Dimensions=[{'Name': 'LoadBalancerName', 'Value': load_balancer_name}]
+)
+
+# Scaling events alarm
+scaling_events_alarm_name = 'ScalingEventsAlarm'
+cloudwatch_client.put_metric_alarm(
+    AlarmName=scaling_events_alarm_name,
+    AlarmActions=[topic_arns['scaling_events']],
+    MetricName='RequestCount',
+    Namespace='AWS/ELB',
+    Statistic='Sum',
+    ComparisonOperator='GreaterThanThreshold',
+    Threshold=10000,  # Change threshold according to your requirement
+    Period=300,  # 5 minutes
+    EvaluationPeriods=1,
+    Dimensions=[{'Name': 'LoadBalancerName', 'Value': load_balancer_name}]
+)
+
+# High traffic alarm
+high_traffic_alarm_name = 'HighTrafficAlarm'
+cloudwatch_client.put_metric_alarm(
+    AlarmName=high_traffic_alarm_name,
+    AlarmActions=[topic_arns['high_traffic']],
+    MetricName='RequestCount',
+    Namespace='AWS/ELB',
+    Statistic='Sum',
+    ComparisonOperator='GreaterThanThreshold',
+    Threshold=20000,  # Change threshold according to your requirement
+    Period=300,  # 5 minutes
+    EvaluationPeriods=1,
+    Dimensions=[{'Name': 'LoadBalancerName', 'Value': load_balancer_name}]
+)
+
+# Lambda function for sending notifications
+lambda_function_arn = 'Lambda-To_trigger_we'
+
+# Set up Lambda subscription to each SNS topic
+for topic_arn in topic_arns.values():
+    sns_client.subscribe(
+        TopicArn=topic_arn,
+        Protocol='lambda',
+        Endpoint=lambda_function_arn
+    )
+
+# Lambda function to handle notifications
+def lambda_handler(event, context):
+    message = event['Records'][0]['Sns']['Message']
+    # Code to send SMS or email notifications to administrators
+    # You can use SNS to send SMS or email based on the topic received
+    print("Received message: ", message)
